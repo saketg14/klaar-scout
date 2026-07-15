@@ -1,4 +1,5 @@
 import os
+import copy
 import re
 import json
 import time
@@ -373,14 +374,13 @@ def scrape_and_analyze():
                 print(f"\n[TEARDOWN] {info['name']}")
                 yield sse({"status": "analyzing", "message": f"Analyzing {info['name']}..."})
                 try:
-                    teardown = call_claude(client, competitor_prompt(digests[key]))
-                    teardown.update({
-                        "key": key,
-                        "name": info["name"],
-                        "url": info["url"],
-                        "color": info["color"],
-                        "screenshots": screenshots.get(key, {})
-                    })
+                    raw = call_claude(client, competitor_prompt(digests[key]))
+                    teardown = copy.deepcopy(raw)  # deep copy so nested data doesn't bleed across competitors
+                    teardown["key"] = key
+                    teardown["name"] = info["name"]
+                    teardown["url"] = info["url"]
+                    teardown["color"] = info["color"]
+                    teardown["screenshots"] = screenshots.get(key, {})
                     teardowns.append(teardown)
                     print(f"[TEARDOWN] {info['name']} done")
                     yield sse({"status": "competitor_done", "data": teardown})
