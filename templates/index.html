@@ -232,6 +232,7 @@ const tabs = document.getElementById('tabs');
 const panels = document.getElementById('panels');
 const recoWrap = document.getElementById('reco-wrap');
 const klaarWrap = document.getElementById('klaar-wrap');
+const sectionChartsWrap = document.getElementById('sectionCharts') || {innerHTML:''};
 const overviewWrap = document.getElementById('overview-wrap');
 const empty = document.getElementById('empty');
 const runBtn = document.getElementById('run');
@@ -488,7 +489,8 @@ function runTeardown(force=false){
   runBtn.disabled = true;
   document.getElementById('pdfBtn').classList.remove('visible');
   document.getElementById('cache-banner').style.display = 'none';
-  tabs.innerHTML=''; panels.innerHTML=''; overviewWrap.innerHTML=''; sectionChartsWrap.innerHTML='';
+  tabs.innerHTML=''; panels.innerHTML=''; overviewWrap.innerHTML='';
+  if(document.getElementById('sectionCharts')) document.getElementById('sectionCharts').innerHTML='';
   klaarWrap.innerHTML='';
   allTeardowns.length = 0;
   Object.values(sectionCharts).forEach(c=>{try{c.destroy();}catch(e){}});
