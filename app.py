@@ -9,7 +9,7 @@ import datetime
 import anthropic
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, render_template, Response, stream_with_context, jsonify
+from flask import Flask, render_template, Response, stream_with_context, jsonify, request
 
 app = Flask(__name__)
 
@@ -496,7 +496,6 @@ def scrape_and_analyze():
             traceback.print_exc()
             yield sse({"status": "error", "message": f"Fatal error: {e}"})
 
-    from flask import request
     return Response(stream_with_context(generate()), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
