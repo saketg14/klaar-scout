@@ -30,11 +30,6 @@
     padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;transition:opacity .15s}
   button.run:hover{opacity:.85}
   button.run:disabled{opacity:.4;cursor:default}
-  .pdf-btn{background:transparent;color:#fff;border:1.5px solid #555;border-radius:9px;
-    padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;
-    transition:all .15s;display:none}
-  .pdf-btn:hover{border-color:#fff}
-  .pdf-btn.visible{display:block}
 
   /* Log */
   .log{font-size:13px;color:var(--muted);margin:0 0 20px;padding:10px 14px;
@@ -153,17 +148,6 @@
   .klaar-ss-item a{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.7);
     color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;text-decoration:none}
 
-  /* PDF print styles */
-  @media print{
-    header{background:#222!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .run,.pdf-btn,#cache-banner,#rubric-modal,.reco-toggle{display:none!important}
-    .reco-body{display:block!important}
-    .panel{display:block!important;page-break-after:always}
-    .tabs{display:none}
-    body{background:#fff}
-    .block,.chart-wrap,.ss-wrap,.vs-reco,.klaar-section{break-inside:avoid}
-    .ss-wrap img{max-height:300px;object-fit:cover;object-position:top}
-  }
 </style>
 </head>
 <body>
@@ -173,28 +157,12 @@
       <div class="logo-mark">K</div>
       <div>
         <h1>Klaar <span>· Website Intelligence</span></h1>
-        <div class="sub">Module B teardown of klaarhq.com against the field &nbsp;
-          <span onclick="toggleRubric()" style="color:var(--purple);cursor:pointer;font-size:11px;font-weight:600">
-            ⓘ Scoring rubric
-          </span>
-        </div>
+        <div class="sub">Module B teardown of klaarhq.com against the field</div>
       </div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="pdf-btn" id="pdfBtn" onclick="window.print()">⬇ PDF</button>
-      <button class="run" id="run">Run teardown</button>
-    </div>
+    <button class="run" id="run">Run teardown</button>
   </header>
 
-  <div id="cache-banner" style="display:none;background:#1a1625;color:#aaa;font-size:12px;
-    padding:10px 16px;border-radius:10px;margin-bottom:12px;display:flex;align-items:center;
-    justify-content:space-between;gap:12px">
-    <span id="cache-msg"></span>
-    <button onclick="runFresh()" style="background:transparent;border:1px solid #444;color:#fff;
-      border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:inherit">
-      Force refresh
-    </button>
-  </div>
   <div class="log" id="log">Press run to scrape the competitor sites and build the teardown.</div>
 
   <div id="output">
@@ -204,21 +172,6 @@
     <div id="panels"></div>
     <div id="klaar-wrap"></div>
     <div id="reco-wrap"></div>
-  </div>
-  <!-- Rubric modal -->
-  <div id="rubric-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
-    z-index:1000;padding:40px 20px;overflow-y:auto" onclick="if(event.target===this)toggleRubric()">
-    <div style="max-width:700px;margin:0 auto;background:#fff;border-radius:16px;padding:28px 32px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <h2 style="font-size:16px;font-weight:700">Scoring Rubric</h2>
-        <span onclick="toggleRubric()" style="cursor:pointer;font-size:20px;color:#999">✕</span>
-      </div>
-      <p style="font-size:12.5px;color:#666;margin-bottom:16px;line-height:1.6">
-        Every competitor and Klaar is scored using these exact criteria every run. Scores are 0–10 per section.
-      </p>
-      <pre id="rubric-text" style="font-size:12px;line-height:1.7;white-space:pre-wrap;
-        background:#f8f7fc;padding:16px;border-radius:10px;color:#333;font-family:inherit">{{ scoring_rubric }}</pre>
-    </div>
   </div>
 </div>
 
@@ -232,13 +185,13 @@ const tabs = document.getElementById('tabs');
 const panels = document.getElementById('panels');
 const recoWrap = document.getElementById('reco-wrap');
 const klaarWrap = document.getElementById('klaar-wrap');
-const sectionChartsWrap = document.getElementById('sectionCharts') || {innerHTML:''};
 const overviewWrap = document.getElementById('overview-wrap');
 const empty = document.getElementById('empty');
 const runBtn = document.getElementById('run');
 
 const allTeardowns = [];
 let radarChart = null;
+const sectionCharts = {};
 
 function esc(s){return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function row(k,val){if(!val)return'';return `<div class="row"><div class="k">${k}</div><div>${esc(val)}</div></div>`;}
@@ -319,15 +272,6 @@ function renderCompetitor(d){
 
   const color = d.color || '#8C52FD';
   const s = d.scores || {};
-  const ss = d.screenshots || {};
-
-  function ssBlock(b64, label, url){
-    if(!b64) return '';
-    return `<div class="ss-wrap"><span class="ss-label">${label}</span>
-      <img src="data:image/jpeg;base64,${b64}" alt="${label}">
-      <a class="ss-link" href="${url}" target="_blank">View live ↗</a></div>`;
-  }
-
   const scoreSection = `<div class="block"><h3>Section Scores</h3>
     ${scoreBar('Above the Fold', s.above_the_fold||0, color)}
     ${scoreBar('Structure & Layout', s.structure_layout||0, color)}
@@ -340,17 +284,14 @@ function renderCompetitor(d){
   panel.className = 'panel'; panel.id = 'panel-' + d.key;
   panel.innerHTML =
     scoreSection +
-    ssBlock(ss.home, 'HOMEPAGE', d.url) +
     sectionBlock('Above the fold', d.above_the_fold,
       [['headline','Headline'],['subhead','Subhead'],['primary_cta','Primary CTA']], 'atf-block') +
     sectionBlock('B1 · Structure & layout', d.structure_layout,
       [['hierarchy_read','Eye path'],['density','Density']]) +
-    ssBlock(ss.pricing, 'PRICING PAGE', d.url+'/pricing') +
     sectionBlock('B2 · Pricing psychology', d.pricing_psychology,
       [['tier_structure','Tiers'],['anchoring','Anchoring'],['most_popular_nudge','Most-popular nudge'],
        ['hidden_behind_contact_sales','Behind contact sales'],['annual_vs_monthly','Annual vs monthly'],
        ['feature_gating','Feature gating'],['risk_reducers','Risk reducers']]) +
-    ssBlock(ss.proof, 'CUSTOMERS / PROOF PAGE', d.url+'/customers') +
     sectionBlock('B3 · Proof & case studies', d.proof_case_studies,
       [['logo_wall','Logo wall'],['case_study_construction','Case study build'],
        ['placement_sequencing','Placement'],['testimonial_style','Testimonials'],
@@ -461,75 +402,29 @@ function renderKlaarSection(d){
     </div>`;
 }
 
-function toggleRubric(){
-  const m = document.getElementById('rubric-modal');
-  m.style.display = m.style.display === 'none' ? 'flex' : 'none';
-  m.style.alignItems = 'flex-start';
-}
-
-function runFresh(){
-  runTeardown(true);
-}
-
-async function checkCacheOnLoad(){
-  try {
-    const r = await fetch('/api/cache-status');
-    const d = await r.json();
-    if(d.has_cache){
-      const banner = document.getElementById('cache-banner');
-      const msg = document.getElementById('cache-msg');
-      banner.style.display = 'flex';
-      msg.textContent = `Showing cached results from ${d.days_old} day${d.days_old===1?'':'s'} ago. Next auto-refresh in ${d.next_refresh_in_days} days.`;
-    }
-  } catch(e){}
-}
-checkCacheOnLoad();
-
-function runTeardown(force=false){
+runBtn.onclick = ()=>{
   runBtn.disabled = true;
-  document.getElementById('pdfBtn').classList.remove('visible');
-  document.getElementById('cache-banner').style.display = 'none';
-  tabs.innerHTML=''; panels.innerHTML=''; overviewWrap.innerHTML='';
-  if(document.getElementById('sectionCharts')) document.getElementById('sectionCharts').innerHTML='';
-  klaarWrap.innerHTML='';
+  tabs.innerHTML=''; panels.innerHTML=''; recoWrap.innerHTML=''; klaarWrap.innerHTML=''; overviewWrap.innerHTML='';
   allTeardowns.length = 0;
-  Object.values(sectionCharts).forEach(c=>{try{c.destroy();}catch(e){}});
-  Object.keys(sectionCharts).forEach(k=>delete sectionCharts[k]);
   if(radarChart){radarChart.destroy(); radarChart=null;}
   empty.style.display='block'; empty.textContent='Working...';
-
-  const url = force ? '/api/scrape-and-analyze?force=1' : '/api/scrape-and-analyze';
-  const es = new EventSource(url);
+  const es = new EventSource('/api/scrape-and-analyze');
   es.onmessage = (e)=>{
     const d = JSON.parse(e.data);
-    if(d.status==='cache_hit'){
-      log.innerHTML=`<b>Loading from cache</b> (${d.days_old} days old)...`;
-    }
-    else if(d.status==='scraping'||d.status==='analyzing') log.innerHTML='<b>'+esc(d.message)+'</b>';
+    if(d.status==='scraping'||d.status==='analyzing') log.innerHTML='<b>'+esc(d.message)+'</b>';
     else if(d.status==='warn') log.innerHTML='⚠ <b>'+esc(d.message)+'</b>';
     else if(d.status==='competitor_done') renderCompetitor(d.data);
-    else if(d.status==='competitor_reco_done') renderCompetitorReco(d.data);
     else if(d.status==='klaar_done') renderKlaarSection(d.data);
+    else if(d.status==='recommendations_done') renderRecos(d.data);
     else if(d.status==='error'){log.innerHTML='<b>Error: '+esc(d.message)+'</b>';es.close();runBtn.disabled=false;}
     else if(d.status==='done'){
       log.innerHTML='<b>Done.</b> Teardown ready.';
       es.close(); runBtn.disabled=false;
-      document.getElementById('pdfBtn').classList.add('visible');
       setTimeout(()=>{if(!document.querySelector('.tab.active')) empty.textContent='No data returned.';}, 500);
     }
   };
-  es.onerror = ()=>{
-    if(allTeardowns.length){
-      log.innerHTML='<b>Done.</b> Teardown ready (partial).';
-      document.getElementById('pdfBtn').classList.add('visible');
-    } else {
-      log.innerHTML='<b>Connection closed.</b>';
-    }
-    es.close(); runBtn.disabled=false;
-  };
-}
-
-runBtn.onclick = ()=>{ runTeardown(); };
+  es.onerror = ()=>{log.innerHTML='<b>Connection closed.</b>';es.close();runBtn.disabled=false;};
+};
 </script>
 </body>
 </html>
