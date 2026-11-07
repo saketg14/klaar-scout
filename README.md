@@ -46,11 +46,13 @@ docker run -p 8080:8080 -e ANTHROPIC_API_KEY=your-key-here klaar-scout
 
 Then open http://localhost:8080.
 
+The Railway deployment I used during the internship has been taken down, so there is no live version. Run it locally to try it.
+
 Results are written to `scout_cache.json` in the project folder. It is in `.gitignore` because it holds scraped page text and base64 screenshots.
 
 ## Results
 
-The manual version of this comparison took about [MANUAL TIME]. A full run takes about [RUN TIME]. Both numbers are my estimates, not measured by the code.
+The manual version of this comparison took about 3 hours. A full run takes about 2 to 3 minutes. Both numbers are my estimates, not measured by the code.
 
 ## Limitations
 
