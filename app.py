@@ -307,7 +307,7 @@ def klaar_prompt(digest, competitor_scores_summary):
         "\n\nCOMPETITOR AVERAGE SCORES FOR CONTEXT:\n" + competitor_scores_summary +
         "\n\nKLAAR'S TWO REAL EDGES:\n" + KLAAR_EDGES +
         "\n\nIn the vs_field section, compare Klaar directly to the competitor average scores above. "
-        "Be brutally honest - this is internal analysis for the founders.\n\n"
+        "Be candid and specific about where Klaar falls short.\n\n"
         "Return ONLY valid JSON, no markdown fences, no preamble:\n"
         + KLAAR_SCHEMA
     )
