@@ -1,5 +1,7 @@
 # Run output: scraped text, Claude results, and base64 screenshots
 scout_cache.json
+screenshots/
+output/
 
 # Secrets
 .env

@@ -31,12 +31,17 @@ def save_cache(data):
     except Exception as e:
         print(f"[CACHE] save failed: {e}")
 
+def cache_age(ts):
+    then = datetime.datetime.fromisoformat(ts)
+    if then.tzinfo is None:  # caches written before timestamps were timezone-aware
+        then = then.replace(tzinfo=datetime.timezone.utc)
+    return datetime.datetime.now(datetime.timezone.utc) - then
+
 def cache_is_fresh(cache):
     ts = cache.get("timestamp")
     if not ts:
         return False
-    age = datetime.datetime.utcnow() - datetime.datetime.fromisoformat(ts)
-    return age.days < CACHE_TTL_DAYS
+    return cache_age(ts).days < CACHE_TTL_DAYS
 
 # ─── Competitors ─────────────────────────────────────────────────────────────
 COMPETITORS = {
@@ -379,7 +384,7 @@ def index():
 def cache_status():
     cache = load_cache()
     if cache and cache_is_fresh(cache):
-        age = datetime.datetime.utcnow() - datetime.datetime.fromisoformat(cache["timestamp"])
+        age = cache_age(cache["timestamp"])
         next_refresh = CACHE_TTL_DAYS - age.days
         return jsonify({"has_cache": True, "days_old": age.days, "next_refresh_in_days": next_refresh,
                         "timestamp": cache["timestamp"]})
@@ -396,7 +401,7 @@ def scrape_and_analyze():
             if not force and cache and cache_is_fresh(cache):
                 print("[CACHE] serving from cache")
                 yield sse({"status": "cache_hit", "timestamp": cache["timestamp"],
-                           "days_old": (datetime.datetime.utcnow() - datetime.datetime.fromisoformat(cache["timestamp"])).days})
+                           "days_old": cache_age(cache["timestamp"]).days})
                 for item in cache.get("events", []):
                     yield sse(item)
                 yield sse({"status": "done"})
@@ -457,8 +462,8 @@ def scrape_and_analyze():
                         per_reco["name"] = info["name"]
                         yield emit({"status": "competitor_reco_done", "data": per_reco})
                         print(f"[PER-RECO] {info['name']} done")
-                    except Exception as re:
-                        print(f"[PER-RECO ERROR] {info['name']}: {re}")
+                    except Exception as reco_err:
+                        print(f"[PER-RECO ERROR] {info['name']}: {reco_err}")
 
                 except Exception as e:
                     print(f"[TEARDOWN ERROR] {info['name']}: {e}")
@@ -484,7 +489,7 @@ def scrape_and_analyze():
                 yield sse({"status": "warn", "message": f"Klaar analysis failed: {e}"})
 
             # Save to cache
-            save_cache({"timestamp": datetime.datetime.utcnow().isoformat(), "events": cached_events})
+            save_cache({"timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(), "events": cached_events})
             print("[CACHE] saved")
 
             print("\n[DONE]")

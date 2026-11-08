@@ -1,32 +1,33 @@
 # klaar-scout
 
-A Flask app that scrapes the marketing websites of six competitors and Klaar, then uses the Claude API to score each site on a fixed rubric and suggest what Klaar should copy or counter.
-
-## What one run does
-
-- **7 sites:** 6 competitors (Culture Amp, Lattice, 15Five, PerformYard, Leapsome, Betterworks) plus Klaar's own site
-- **35 pages scraped:** the homepage and 4 subpages per site (pricing, customers, and two product or content pages)
-- **21 screenshots:** home, pricing, and customers (platform for Klaar) for each site, taken with headless Chromium
-- **13 Claude calls:** 6 competitor teardowns, 6 head-to-head recommendations for Klaar, and 1 analysis of Klaar's site against the competitor averages
-- **5 scoring areas, each scored 0 to 10:** above the fold, structure and layout, pricing psychology, proof and case studies, messaging and conversion
-- **15-day cache:** results are saved and served from cache until they are 15 days old, unless you force a refresh
+Compares Klaar's marketing site against 6 competitors (Culture Amp, Lattice, 15Five, PerformYard, Leapsome, Betterworks) and scores each one on the same 5-area rubric.
 
 ## Why I built it
 
-I built this during my internship at Klaar, an HR tech startup. Comparing Klaar's website against competitors was manual work: open each site, read the pricing and customer pages, take notes, and write up what each one does well. I wanted the same comparison every time, scored against the same criteria, without redoing the reading by hand.
+During my internship at Klaar, a Series A startup, the founders did this competitor research by hand: open each site, read the pricing and customer pages, take notes, and compare. That took about 3 hours. A run of this tool takes about 2 to 3 minutes. Both numbers are my estimates; the code does not measure them.
 
 ## How it works
 
-1. **Screenshots.** Playwright opens each site, dismisses cookie banners, and captures three pages as JPEGs.
-2. **Scraping.** `requests` and BeautifulSoup pull each page and extract headings (h1 to h3), call-to-action buttons, logo image counts, pricing keywords (for example "per user", "billed annually", "contact sales"), social proof keywords, and the first 4,000 characters of body text. Each site is condensed into a text digest of at most 9,000 characters.
-3. **Competitor teardowns.** Each competitor digest goes to Claude (`claude-sonnet-4-6`) with the scoring rubric in `app.py` (`SCORING_RUBRIC`). Claude returns JSON with a score and reasoning for each of the 5 areas.
-4. **Head-to-head recommendations.** For each competitor, a second call compares it against Klaar's site and returns two things to copy, two weaknesses to counter, and one risk to watch.
-5. **Klaar's site.** Klaar is scored last, on the same rubric, with the competitor averages as context, so its scores are directly comparable.
-6. **Output.** Results stream to the browser over server-sent events as each call finishes. The page shows a radar chart across all competitors, a tab per competitor with screenshots and section-by-section notes, and a summary of where Klaar is ahead of or behind the field average.
+One run covers 7 sites: the 6 competitors plus Klaar.
 
-## How to run
+1. **Screenshots.** Playwright opens each site in headless Chromium, dismisses cookie banners, and captures 3 pages per site (home, pricing, customers), for 21 screenshots per run.
+2. **Scraping.** `requests` and BeautifulSoup fetch the homepage and 4 subpages per site (35 pages in total) and pull out headings, call-to-action buttons, logo counts, pricing keywords, social proof keywords, and body text. Each site is condensed into a text digest of at most 9,000 characters.
+3. **Scoring.** Each digest goes to Claude (`claude-sonnet-4-6`) with the rubric in `app.py` (`SCORING_RUBRIC`). Claude scores the site 0 to 10 on:
+   - above the fold
+   - structure and layout
+   - pricing psychology
+   - proof and case studies
+   - messaging and conversion
+4. **Recommendations.** For each competitor, a second call compares it with Klaar and returns what to steal, what to counter, and one thing to watch out for.
+5. **Klaar.** Klaar's site is scored last, on the same rubric, against the competitor averages.
 
-You need Python 3.9 or newer (the minimum for the pinned Playwright version) and an Anthropic API key.
+That is 13 streaming Claude calls per run: 6 competitor scores, 6 steal / counter / watch out calls, and 1 for Klaar. Results stream to the browser as each call finishes and show up as a radar chart, a tab per competitor with screenshots and notes, and a summary of where Klaar is ahead of or behind the average.
+
+Results are cached in `scout_cache.json` for 15 days. Until the cache expires, the page loads from it instead of making new calls. **Force refresh** runs everything again.
+
+## How to run it
+
+You need Python 3.10 or newer and an Anthropic API key.
 
 ```bash
 pip install -r requirements.txt
@@ -35,7 +36,7 @@ export ANTHROPIC_API_KEY=your-key-here
 python app.py
 ```
 
-Open http://localhost:5000 and click **Run teardown**. A full run makes 13 API calls. If a cached result less than 15 days old exists, the page loads it instead; use **Force refresh** to run again.
+Open http://localhost:5000 and click **Run teardown**.
 
 With Docker:
 
@@ -46,17 +47,12 @@ docker run -p 8080:8080 -e ANTHROPIC_API_KEY=your-key-here klaar-scout
 
 Then open http://localhost:8080.
 
-The Railway deployment I used during the internship has been taken down, so there is no live version. Run it locally to try it.
+## Deployment
 
-Results are written to `scout_cache.json` in the project folder. It is in `.gitignore` because it holds scraped page text and base64 screenshots.
-
-## Results
-
-The manual version of this comparison took about 3 hours. A full run takes about 2 to 3 minutes. Both numbers are my estimates, not measured by the code.
+This is not deployed publicly. The version I ran during the internship has been taken down. The API routes have no authentication, so anyone who can reach a deployed copy can start a run on your API key. Add authentication before deploying it anywhere public.
 
 ## Limitations
 
-- Scores come from Claude reading a text digest and following the rubric. They are consistent in structure but not deterministic, so the same site can score differently between runs.
-- The scraper reads static HTML. Content that only loads through JavaScript is missed in the text digest, though it does appear in the screenshots.
-- The competitor list and page paths are hardcoded in `app.py` (`COMPETITORS`, `SUBPAGES`, `SCREENSHOT_PATHS`). Sites that change their URLs will show up as skipped pages in the server log.
-- There is no authentication on the API routes. Do not deploy it publicly without adding some, since anyone with the URL can trigger a full run on your API key.
+- Scores come from Claude following a written rubric, so the same site can score differently between runs.
+- The scraper reads raw HTML. Text that only appears after JavaScript runs is missed in the digest, though it shows up in the screenshots.
+- The competitor list and page paths are hardcoded in `app.py` (`COMPETITORS`, `SUBPAGES`, `SCREENSHOT_PATHS`). If a site moves a page, it shows up as skipped in the server log.
